@@ -1,4 +1,5 @@
 // JARVIS Memory Sync — Content Script
+console.log('JARVIS content script cargado en:', location.hostname);
 // Extrae conversaciones de Claude y ChatGPT
 
 function extractConversation() {
