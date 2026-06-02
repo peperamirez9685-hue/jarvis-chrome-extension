@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>JARVIS Memory Sync</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    width: 280px;
+    background: #07090f;
+    color: #e8f8ff;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 18px;
+    border: 1px solid rgba(0,212,255,0.2);
+  }
+
+  .logo {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .logo-title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: #00d4ff;
+    text-shadow: 0 0 12px rgba(0,212,255,0.6);
+  }
+  .logo-sub {
+    font-size: 8px;
+    letter-spacing: 3px;
+    color: #8fb6c8;
+    margin-top: 3px;
+  }
+
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,212,255,0.4), transparent);
+    margin: 12px 0;
+  }
+
+  .site-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(0,212,255,0.05);
+    border: 1px solid rgba(0,212,255,0.12);
+    border-radius: 2px;
+    margin-bottom: 14px;
+  }
+  .site-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #00ff88;
+    box-shadow: 0 0 6px #00ff88;
+    flex-shrink: 0;
+  }
+  .site-dot.inactive { background: #8fb6c8; box-shadow: none; }
+  .site-name {
+    font-size: 11px;
+    color: #a0d4ff;
+    letter-spacing: 1px;
+  }
+
+  .sync-btn {
+    width: 100%;
+    padding: 12px;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.45);
+    color: #00d4ff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+  .sync-btn:hover:not(:disabled) {
+    background: rgba(0,212,255,0.15);
+    box-shadow: 0 0 16px rgba(0,212,255,0.2);
+  }
+  .sync-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    min-height: 24px;
+  }
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #8fb6c8;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .status-dot.ok     { background: #00ff88; box-shadow: 0 0 6px #00ff88; }
+  .status-dot.busy   { background: #ffaa00; box-shadow: 0 0 6px #ffaa00;
+                       animation: pulse 0.8s ease-in-out infinite; }
+  .status-dot.error  { background: #ff3344; box-shadow: 0 0 6px #ff3344; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .status-txt {
+    font-size: 11px;
+    color: #8fb6c8;
+    flex: 1;
+  }
+  .status-txt.ok    { color: #00ff88; }
+  .status-txt.busy  { color: #ffaa00; }
+  .status-txt.error { color: #ff3344; }
+
+  .last-sync {
+    margin-top: 10px;
+    font-size: 9px;
+    color: #3a5a6a;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  .stats-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .stat-box {
+    flex: 1;
+    text-align: center;
+    padding: 7px 4px;
+    background: rgba(0,212,255,0.04);
+    border: 1px solid rgba(0,212,255,0.1);
+    border-radius: 2px;
+  }
+  .stat-n { font-size: 18px; color: #00d4ff; font-weight: 700; display: block; line-height:1; }
+  .stat-l { font-size: 8px; color: #8fb6c8; letter-spacing: 1px; margin-top: 3px; display:block; }
+</style>
+</head>
+<body>
+
+<div class="logo">
+  <div class="logo-title">J.A.R.V.I.S</div>
+  <div class="logo-sub">MEMORY SYNC</div>
+</div>
+
+<div class="divider"></div>
+
+<div class="site-badge">
+  <span class="site-dot inactive" id="site-dot"></span>
+  <span class="site-name" id="site-name">Cargando...</span>
+</div>
+
+<button class="sync-btn" id="sync-btn" onclick="syncNow()">
+  ⚡ SINCRONIZAR CON JARVIS
+</button>
+
+<div class="status-row">
+  <span class="status-dot" id="st-dot"></span>
+  <span class="status-txt" id="st-txt">Listo</span>
+</div>
+
+<div class="stats-row" id="stats-row" style="display:none">
+  <div class="stat-box">
+    <span class="stat-n" id="st-hechos">—</span>
+    <span class="stat-l">hechos</span>
+  </div>
+  <div class="stat-box">
+    <span class="stat-n" id="st-decs">—</span>
+    <span class="stat-l">decisiones</span>
+  </div>
+</div>
+
+<div class="last-sync" id="last-sync"></div>
+
+<script src="popup.js"></script>
+</body>
+</html>
