@@ -92,6 +92,11 @@ function extractFn() {
   return pairs.slice(-40).join('\n\n').substring(0, 5000);
 }
 
+// ── Registrar listener cuando el DOM esté listo ──────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('sync-btn').addEventListener('click', syncNow);
+});
+
 // ── Click principal ──────────────────────────────────────────────────
 async function syncNow() {
   console.log('Botón clickeado');
