@@ -60,30 +60,56 @@ function extractFn() {
   const pairs = [];
 
   if (host.includes('claude')) {
-    const humans = document.querySelectorAll('[data-testid="human-turn"]');
-    const ais    = document.querySelectorAll('[data-testid="ai-turn"]');
-    const len    = Math.max(humans.length, ais.length);
-    for (let i = 0; i < len; i++) {
-      if (humans[i]) pairs.push('USUARIO: ' + humans[i].innerText.trim());
-      if (ais[i])    pairs.push('CLAUDE: '  + ais[i].innerText.trim());
+    // Estrategia 1: data-testid exactos
+    let humans = document.querySelectorAll('[data-testid="human-turn"]');
+    let ais    = document.querySelectorAll('[data-testid="ai-turn"]');
+    // Estrategia 2: data-testid parciales
+    if (!humans.length) humans = document.querySelectorAll('[data-testid*="human"]');
+    if (!ais.length)    ais    = document.querySelectorAll('[data-testid*="assistant"],[data-testid*="claude-response"]');
+    // Estrategia 3: clases
+    if (!humans.length) humans = document.querySelectorAll('.font-user-message,[class*="HumanTurn"],[class*="UserMessage"]');
+    if (!ais.length)    ais    = document.querySelectorAll('.font-claude-message,[class*="AssistantTurn"],[class*="ClaudeMessage"]');
+
+    if (humans.length || ais.length) {
+      const len = Math.max(humans.length, ais.length);
+      for (let i = 0; i < len; i++) {
+        const h = humans[i]?.innerText?.trim();
+        const a = ais[i]?.innerText?.trim();
+        if (h) pairs.push('USUARIO: ' + h);
+        if (a) pairs.push('CLAUDE: '  + a);
+      }
     }
+    // Estrategia 4: orden DOM genérico
+    if (!pairs.length) {
+      document.querySelectorAll('[data-testid*="turn"],[class*="Turn"],[class*="Message"],.prose')
+        .forEach((el, i) => {
+          const txt = el.innerText?.trim();
+          if (txt && txt.length > 5)
+            pairs.push((i % 2 === 0 ? 'USUARIO' : 'CLAUDE') + ': ' + txt);
+        });
+    }
+    // Estrategia 5: volcar área principal
+    if (!pairs.length) {
+      const c = document.querySelector('main,[role="main"],.flex-1');
+      const t = c?.innerText?.trim();
+      if (t && t.length > 30) pairs.push('CONVERSACION: ' + t);
+    }
+
   } else {
-    // ChatGPT — selector por rol
+    // ChatGPT
     const msgs = document.querySelectorAll(
-      '[data-message-author-role="user"], [data-message-author-role="assistant"]'
+      '[data-message-author-role="user"],[data-message-author-role="assistant"]'
     );
     msgs.forEach(el => {
-      const role = el.getAttribute('data-message-author-role') === 'user'
-        ? 'USUARIO' : 'CHATGPT';
-      const txt = el.innerText.trim();
+      const role = el.getAttribute('data-message-author-role') === 'user' ? 'USUARIO' : 'CHATGPT';
+      const txt  = el.innerText?.trim();
       if (txt) pairs.push(role + ': ' + txt);
     });
-
-    // Fallback: bloques de texto de conversación genéricos
     if (!pairs.length) {
-      document.querySelectorAll('.markdown, .prose, [class*="message"]').forEach(el => {
-        const txt = el.innerText.trim();
-        if (txt.length > 20) pairs.push(txt);
+      document.querySelectorAll('.markdown,.prose,[class*="message"]').forEach((el, i) => {
+        const txt = el.innerText?.trim();
+        if (txt && txt.length > 20)
+          pairs.push((i % 2 === 0 ? 'USUARIO' : 'CHATGPT') + ': ' + txt);
       });
     }
   }
