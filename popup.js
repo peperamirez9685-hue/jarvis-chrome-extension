@@ -180,7 +180,10 @@ async function syncNow() {
   try {
     const res = await fetch(`${JARVIS_URL}/api/learn`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-JARVIS-KEY': 'jarvis-internal-2026'
+      },
       body: JSON.stringify({
         texto,
         fuente,
@@ -190,12 +193,18 @@ async function syncNow() {
     });
 
     console.log('Response status:', res.status);
-    const body = await res.text();
-    console.log('Response body:', body.substring(0, 200));
+    const responseText = await res.text();
+    console.log('Response body:', responseText.substring(0, 200));
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${body.substring(0, 80)}`);
+    if (!res.ok) {
+      const msg = 'Error: ' + res.status + ' ' + responseText.substring(0, 80);
+      console.error(msg);
+      setState('error', msg);
+      setBtn(false);
+      return;
+    }
 
-    const data = JSON.parse(body);
+    const data = JSON.parse(responseText);
     const hechos = data.hechos    ?? 0;
     const decs   = data.decisiones ?? 0;
 
@@ -210,7 +219,7 @@ async function syncNow() {
     setState('ok', `✅ ${hechos} hechos · ${decs} decisiones guardadas`);
   } catch (err) {
     console.error('Fetch /api/learn error:', err);
-    setState('error', err.message.substring(0, 65));
+    setState('error', 'Error: ' + err.message.substring(0, 60));
   }
 
   setBtn(false);
