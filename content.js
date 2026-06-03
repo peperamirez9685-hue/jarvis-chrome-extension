@@ -6,26 +6,24 @@ function extractConversation() {
   const pairs = [];
 
   if (host.includes('claude.ai')) {
-    // ── Estrategia 1: data-testid exactos (UI clásico) ──────────────
-    let humans = document.querySelectorAll('[data-testid="human-turn"]');
-    let ais    = document.querySelectorAll('[data-testid="ai-turn"]');
+    // ── Estrategia 1: selectores 2026 — data-testid de mensajes ────────
+    let humans = document.querySelectorAll('[data-testid="user-message"]');
+    let ais    = document.querySelectorAll('[data-testid="assistant-message"]');
 
-    // ── Estrategia 2: data-testid parciales ─────────────────────────
+    // ── Estrategia 2: data-testid parciales ─────────────────────────────
     if (!humans.length)
-      humans = document.querySelectorAll('[data-testid*="human"]');
+      humans = document.querySelectorAll('[data-testid*="human"], [data-testid*="user"]');
     if (!ais.length)
-      ais = document.querySelectorAll(
-        '[data-testid*="assistant"], [data-testid*="claude-response"]'
-      );
+      ais = document.querySelectorAll('[data-testid*="assistant"], [data-testid*="claude"]');
 
-    // ── Estrategia 3: clases conocidas ──────────────────────────────
+    // ── Estrategia 3: clases conocidas 2025-2026 ────────────────────────
     if (!humans.length)
       humans = document.querySelectorAll(
-        '.font-user-message, [class*="HumanTurn"], [class*="human-turn"], [class*="UserMessage"]'
+        '.font-user-message, [class*="HumanTurn"], [class*="human-turn"], [class*="UserMessage"], [class*="user-message"]'
       );
     if (!ais.length)
       ais = document.querySelectorAll(
-        '.font-claude-message, [class*="AssistantTurn"], [class*="ClaudeMessage"], [class*="ai-turn"]'
+        '.font-claude-message, [class*="AssistantTurn"], [class*="ClaudeMessage"], [class*="ai-turn"], [class*="assistant-message"]'
       );
 
     if (humans.length || ais.length) {
@@ -38,10 +36,32 @@ function extractConversation() {
       }
     }
 
-    // ── Estrategia 4: todos los mensajes en orden del DOM ────────────
+    // ── Estrategia 4: article tags (layout 2026) ────────────────────────
+    if (!pairs.length) {
+      const articles = document.querySelectorAll('article');
+      articles.forEach((el, i) => {
+        const txt = el.innerText?.trim();
+        if (txt && txt.length > 5)
+          pairs.push({ role: i % 2 === 0 ? 'USUARIO' : 'CLAUDE', text: txt });
+      });
+    }
+
+    // ── Estrategia 5: prose divs (respuestas markdown de Claude) ────────
+    if (!pairs.length) {
+      const proseEls = document.querySelectorAll(
+        'div[class*="prose"], .whitespace-pre-wrap, [class*="message-content"]'
+      );
+      proseEls.forEach((el, i) => {
+        const txt = el.innerText?.trim();
+        if (txt && txt.length > 10)
+          pairs.push({ role: i % 2 === 0 ? 'USUARIO' : 'CLAUDE', text: txt });
+      });
+    }
+
+    // ── Estrategia 6: todos los mensajes en orden del DOM ───────────────
     if (!pairs.length) {
       const allMsg = document.querySelectorAll(
-        '[data-testid*="turn"], [class*="Turn"], [class*="Message"], .prose'
+        '[data-testid*="turn"], [class*="Turn"], [class*="Message"], .prose, article'
       );
       allMsg.forEach((el, i) => {
         const txt = el.innerText?.trim();
@@ -50,7 +70,7 @@ function extractConversation() {
       });
     }
 
-    // ── Estrategia 5: volcar todo el área de conversación ───────────
+    // ── Estrategia 7: volcar todo el área de conversación ───────────────
     if (!pairs.length) {
       const container = document.querySelector(
         'main, [role="main"], .flex-1.overflow-y-auto, [class*="conversation"]'
@@ -60,7 +80,7 @@ function extractConversation() {
     }
 
   } else {
-    // ── ChatGPT ──────────────────────────────────────────────────────
+    // ── ChatGPT ──────────────────────────────────────────────────────────
     const msgs = document.querySelectorAll(
       '[data-message-author-role="user"], [data-message-author-role="assistant"]'
     );
@@ -71,9 +91,9 @@ function extractConversation() {
       if (txt) pairs.push({ role, text: txt });
     });
 
-    // Fallback ChatGPT
+    // ── Fallback ChatGPT: text-message class 2025-2026 ───────────────────
     if (!pairs.length) {
-      document.querySelectorAll('.markdown, .prose, [class*="message"]').forEach((el, i) => {
+      document.querySelectorAll('[class*="text-message"], .markdown, .prose').forEach((el, i) => {
         const txt = el.innerText?.trim();
         if (txt && txt.length > 20)
           pairs.push({ role: i % 2 === 0 ? 'USUARIO' : 'CHATGPT', text: txt });
