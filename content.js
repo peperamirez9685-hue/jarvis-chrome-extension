@@ -5,6 +5,13 @@ function extractConversation() {
   const host = location.hostname;
   let messages = [];
 
+  console.log('JARVIS debug:');
+  console.log('user-message count:', document.querySelectorAll('[data-testid="user-message"]').length);
+  console.log('whitespace-pre-wrap count:', document.querySelectorAll('.whitespace-pre-wrap').length);
+  document.querySelectorAll('[data-testid="user-message"]').forEach((el, i) => {
+    if (i < 3) console.log('user msg', i, ':', el.innerText.substring(0, 50));
+  });
+
   if (host.includes('claude.ai')) {
     const userMsgs = document.querySelectorAll('[data-testid="user-message"]');
     const allText  = document.querySelectorAll('.whitespace-pre-wrap');
