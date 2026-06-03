@@ -3,80 +3,33 @@ console.log('JARVIS content script cargado en:', location.hostname);
 
 function extractConversation() {
   const host = location.hostname;
-  const pairs = [];
+  let messages = [];
 
   if (host.includes('claude.ai')) {
-    // ── Estrategia 1: selectores 2026 — data-testid de mensajes ────────
-    let humans = document.querySelectorAll('[data-testid="user-message"]');
-    let ais    = document.querySelectorAll('[data-testid="assistant-message"]');
+    const userMsgs = document.querySelectorAll('[data-testid="user-message"]');
+    const allText  = document.querySelectorAll('.whitespace-pre-wrap');
 
-    // ── Estrategia 2: data-testid parciales ─────────────────────────────
-    if (!humans.length)
-      humans = document.querySelectorAll('[data-testid*="human"], [data-testid*="user"]');
-    if (!ais.length)
-      ais = document.querySelectorAll('[data-testid*="assistant"], [data-testid*="claude"]');
+    // Estrategia principal: user-message + whitespace-pre-wrap alternados
+    userMsgs.forEach((el, i) => {
+      const userText = el.innerText.trim();
+      if (userText) messages.push('USUARIO: ' + userText);
 
-    // ── Estrategia 3: clases conocidas 2025-2026 ────────────────────────
-    if (!humans.length)
-      humans = document.querySelectorAll(
-        '.font-user-message, [class*="HumanTurn"], [class*="human-turn"], [class*="UserMessage"], [class*="user-message"]'
-      );
-    if (!ais.length)
-      ais = document.querySelectorAll(
-        '.font-claude-message, [class*="AssistantTurn"], [class*="ClaudeMessage"], [class*="ai-turn"], [class*="assistant-message"]'
-      );
-
-    if (humans.length || ais.length) {
-      const len = Math.max(humans.length, ais.length);
-      for (let i = 0; i < len; i++) {
-        const h = humans[i]?.innerText?.trim();
-        const a = ais[i]?.innerText?.trim();
-        if (h) pairs.push({ role: 'USUARIO', text: h });
-        if (a) pairs.push({ role: 'CLAUDE',  text: a });
+      const nextText = allText[i * 2 + 1];
+      if (nextText) {
+        const aiText = nextText.innerText.trim();
+        if (aiText) messages.push('JARVIS: ' + aiText);
       }
-    }
+    });
 
-    // ── Estrategia 4: article tags (layout 2026) ────────────────────────
-    if (!pairs.length) {
-      const articles = document.querySelectorAll('article');
-      articles.forEach((el, i) => {
-        const txt = el.innerText?.trim();
-        if (txt && txt.length > 5)
-          pairs.push({ role: i % 2 === 0 ? 'USUARIO' : 'CLAUDE', text: txt });
+    // Fallback: todos los whitespace-pre-wrap en orden
+    if (messages.length === 0) {
+      allText.forEach((el, i) => {
+        const text = el.innerText.trim();
+        if (text.length > 10) {
+          const role = i % 2 === 0 ? 'USUARIO' : 'JARVIS';
+          messages.push(role + ': ' + text);
+        }
       });
-    }
-
-    // ── Estrategia 5: prose divs (respuestas markdown de Claude) ────────
-    if (!pairs.length) {
-      const proseEls = document.querySelectorAll(
-        'div[class*="prose"], .whitespace-pre-wrap, [class*="message-content"]'
-      );
-      proseEls.forEach((el, i) => {
-        const txt = el.innerText?.trim();
-        if (txt && txt.length > 10)
-          pairs.push({ role: i % 2 === 0 ? 'USUARIO' : 'CLAUDE', text: txt });
-      });
-    }
-
-    // ── Estrategia 6: todos los mensajes en orden del DOM ───────────────
-    if (!pairs.length) {
-      const allMsg = document.querySelectorAll(
-        '[data-testid*="turn"], [class*="Turn"], [class*="Message"], .prose, article'
-      );
-      allMsg.forEach((el, i) => {
-        const txt = el.innerText?.trim();
-        if (txt && txt.length > 5)
-          pairs.push({ role: i % 2 === 0 ? 'USUARIO' : 'CLAUDE', text: txt });
-      });
-    }
-
-    // ── Estrategia 7: volcar todo el área de conversación ───────────────
-    if (!pairs.length) {
-      const container = document.querySelector(
-        'main, [role="main"], .flex-1.overflow-y-auto, [class*="conversation"]'
-      );
-      const txt = container?.innerText?.trim();
-      if (txt && txt.length > 30) pairs.push({ role: 'CONVERSACION', text: txt });
     }
 
   } else {
@@ -88,27 +41,25 @@ function extractConversation() {
       const role = el.getAttribute('data-message-author-role') === 'user'
         ? 'USUARIO' : 'CHATGPT';
       const txt = el.innerText?.trim();
-      if (txt) pairs.push({ role, text: txt });
+      if (txt) messages.push(role + ': ' + txt);
     });
 
-    // ── Fallback ChatGPT: text-message class 2025-2026 ───────────────────
-    if (!pairs.length) {
+    if (messages.length === 0) {
       document.querySelectorAll('[class*="text-message"], .markdown, .prose').forEach((el, i) => {
         const txt = el.innerText?.trim();
         if (txt && txt.length > 20)
-          pairs.push({ role: i % 2 === 0 ? 'USUARIO' : 'CHATGPT', text: txt });
+          messages.push((i % 2 === 0 ? 'USUARIO' : 'CHATGPT') + ': ' + txt);
       });
     }
   }
 
-  if (!pairs.length) {
+  if (messages.length === 0) {
     console.warn('JARVIS: no se encontraron mensajes en la página');
     return null;
   }
 
-  console.log('JARVIS: mensajes encontrados:', pairs.length);
-  const recent = pairs.slice(-40);
-  return recent.map(p => `${p.role}: ${p.text}`).join('\n\n');
+  console.log('JARVIS: mensajes encontrados:', messages.length);
+  return messages.slice(-40).join('\n\n');
 }
 
 window.jarvisExtractConversation = extractConversation;
