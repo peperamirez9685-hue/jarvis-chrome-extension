@@ -141,6 +141,23 @@ async function syncNow() {
 
   // ── PASO 2: POST a /api/learn ────────────────────────────────────
   try {
+    const fecha = new Date().toISOString();
+    const prompt = `SINCRONIZACIÓN COMPLETA DE CONVERSACIÓN
+Fuente: ${fuente}
+Fecha: ${fecha}
+URL: ${tab.url}
+
+CONVERSACIÓN COMPLETA:
+${texto}
+
+Por favor extrae y guarda:
+1. Todos los proyectos mencionados y su estado
+2. Todas las decisiones tomadas
+3. Todas las tareas o pendientes mencionados
+4. Tecnologías y herramientas discutidas
+5. Cualquier información personal o preferencia
+6. Resumen ejecutivo de qué se trabajó`;
+
     const res = await fetch(`${JARVIS_URL}/api/learn`, {
       method: 'POST',
       headers: {
@@ -148,10 +165,10 @@ async function syncNow() {
         'X-JARVIS-KEY': 'jarvis-internal-2026'
       },
       body: JSON.stringify({
-        texto,
+        texto: prompt,
         fuente,
         url:   tab.url,
-        fecha: new Date().toISOString()
+        fecha
       })
     });
 
