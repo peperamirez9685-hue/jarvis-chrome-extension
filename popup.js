@@ -84,6 +84,10 @@ const extractFn = () => {
 // ── Registrar listener cuando el DOM esté listo ──────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('sync-btn').addEventListener('click', syncNow);
+  document.getElementById('upload-btn').addEventListener('click', () => {
+    document.getElementById('file-input').click();
+  });
+  document.getElementById('file-input').addEventListener('change', handleFileUpload);
 });
 
 // ── Click principal ──────────────────────────────────────────────────
@@ -203,4 +207,99 @@ Por favor extrae y guarda:
   }
 
   setBtn(false);
+}
+
+// ── Subir exportación de archivo ─────────────────────────────────────
+async function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Reset input para permitir subir el mismo archivo dos veces
+  event.target.value = '';
+
+  setState('busy', 'Leyendo archivo...');
+  document.getElementById('upload-btn').disabled = true;
+
+  let texto = '';
+  try {
+    const raw = await file.text();
+
+    if (file.name.endsWith('.json')) {
+      // Exportación JSON de Claude: { conversations: [{ messages: [{role, content}] }] }
+      const parsed = JSON.parse(raw);
+      const convs = parsed.conversations || (Array.isArray(parsed) ? parsed : [parsed]);
+      const lines = [];
+      for (const conv of convs) {
+        const msgs = conv.messages || conv.chat_messages || [];
+        for (const m of msgs) {
+          const role    = m.role === 'human' || m.role === 'user' ? 'USUARIO' : 'JARVIS';
+          const content = typeof m.content === 'string'
+            ? m.content
+            : m.content?.map?.(c => c.text || '').join('') || '';
+          if (content.trim()) lines.push(role + ': ' + content.trim());
+        }
+      }
+      texto = lines.join('\n\n');
+    } else {
+      texto = raw;
+    }
+
+    if (!texto || texto.trim().length < 20) {
+      setState('error', 'Archivo vacío o formato no reconocido');
+      document.getElementById('upload-btn').disabled = false;
+      return;
+    }
+
+    setState('busy', `Procesando ${file.name}...`);
+
+    const fecha = new Date().toISOString();
+    const prompt = `EXPORTACIÓN COMPLETA DE CONVERSACIÓN
+Archivo: ${file.name}
+Fecha: ${fecha}
+
+CONVERSACIÓN:
+${texto.substring(0, 12000)}
+
+Por favor extrae y guarda:
+1. Todos los proyectos mencionados y su estado
+2. Todas las decisiones tomadas
+3. Todas las tareas o pendientes mencionados
+4. Tecnologías y herramientas discutidas
+5. Cualquier información personal o preferencia
+6. Resumen ejecutivo de qué se trabajó`;
+
+    const res = await fetch(`${JARVIS_URL}/api/learn`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-JARVIS-KEY': 'jarvis-internal-2026'
+      },
+      body: JSON.stringify({ texto: prompt, fuente: 'export', fecha })
+    });
+
+    const responseText = await res.text();
+    if (!res.ok) {
+      setState('error', 'Error: ' + res.status + ' ' + responseText.substring(0, 60));
+      document.getElementById('upload-btn').disabled = false;
+      return;
+    }
+
+    const data = JSON.parse(responseText);
+    const hechos = data.hechos    ?? 0;
+    const decs   = data.decisiones ?? 0;
+
+    chrome.storage.local.set({ lastSync: Date.now(), lastHechos: hechos, lastDecs: decs });
+    document.getElementById('stats-row').style.display = 'flex';
+    document.getElementById('st-hechos').textContent   = hechos;
+    document.getElementById('st-decs').textContent     = decs;
+    document.getElementById('last-sync').textContent   =
+      'Última sync: ' + new Date().toLocaleString('es-MX');
+
+    setState('ok', `✅ Export: ${hechos} hechos · ${decs} decisiones`);
+  } catch (err) {
+    console.error('handleFileUpload error:', err);
+    setState('error', 'Error: ' + err.message.substring(0, 60));
+  }
+
+  document.getElementById('upload-btn').disabled = false;
 }
