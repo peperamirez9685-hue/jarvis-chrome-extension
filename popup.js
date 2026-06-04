@@ -278,15 +278,27 @@ async function handleFileUpload(event) {
       return;
     }
 
-    setState('busy', `Procesando ${file.name}...`);
+    // Limitar a 80,000 chars y dividir en chunks de 15,000
+    const CHUNK_SIZE = 15000;
+    const fullText   = texto.substring(0, 80000);
+    const chunks     = [];
+    for (let i = 0; i < fullText.length; i += CHUNK_SIZE) {
+      chunks.push(fullText.substring(i, i + CHUNK_SIZE));
+    }
 
     const fecha = new Date().toISOString();
-    const prompt = `EXPORTACIÓN COMPLETA DE CONVERSACIÓN
+    let totalHechos = 0;
+    let totalDecs   = 0;
+
+    for (let ci = 0; ci < chunks.length; ci++) {
+      setState('busy', `Procesando parte ${ci + 1} de ${chunks.length}...`);
+
+      const prompt = `EXPORTACIÓN COMPLETA DE CONVERSACIÓN (parte ${ci + 1}/${chunks.length})
 Archivo: ${file.name}
 Fecha: ${fecha}
 
 CONVERSACIÓN:
-${texto.substring(0, 12000)}
+${chunks[ci]}
 
 Por favor extrae y guarda:
 1. Todos los proyectos mencionados y su estado
@@ -296,34 +308,35 @@ Por favor extrae y guarda:
 5. Cualquier información personal o preferencia
 6. Resumen ejecutivo de qué se trabajó`;
 
-    const res = await fetch(`${JARVIS_URL}/api/learn`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-JARVIS-KEY': 'jarvis-internal-2026'
-      },
-      body: JSON.stringify({ texto: prompt, fuente: 'export', fecha })
-    });
+      const res = await fetch(`${JARVIS_URL}/api/learn`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-JARVIS-KEY': 'jarvis-internal-2026'
+        },
+        body: JSON.stringify({ texto: prompt, fuente: 'export', fecha })
+      });
 
-    const responseText = await res.text();
-    if (!res.ok) {
-      setState('error', 'Error: ' + res.status + ' ' + responseText.substring(0, 60));
-      document.getElementById('upload-btn').disabled = false;
-      return;
+      const responseText = await res.text();
+      if (!res.ok) {
+        setState('error', `Error parte ${ci + 1}: ${res.status} ${responseText.substring(0, 50)}`);
+        document.getElementById('upload-btn').disabled = false;
+        return;
+      }
+
+      const data = JSON.parse(responseText);
+      totalHechos += data.hechos    ?? 0;
+      totalDecs   += data.decisiones ?? 0;
     }
 
-    const data = JSON.parse(responseText);
-    const hechos = data.hechos    ?? 0;
-    const decs   = data.decisiones ?? 0;
-
-    chrome.storage.local.set({ lastSync: Date.now(), lastHechos: hechos, lastDecs: decs });
+    chrome.storage.local.set({ lastSync: Date.now(), lastHechos: totalHechos, lastDecs: totalDecs });
     document.getElementById('stats-row').style.display = 'flex';
-    document.getElementById('st-hechos').textContent   = hechos;
-    document.getElementById('st-decs').textContent     = decs;
+    document.getElementById('st-hechos').textContent   = totalHechos;
+    document.getElementById('st-decs').textContent     = totalDecs;
     document.getElementById('last-sync').textContent   =
       'Última sync: ' + new Date().toLocaleString('es-MX');
 
-    setState('ok', `✅ Export: ${hechos} hechos · ${decs} decisiones`);
+    setState('ok', `✅ ${chunks.length} partes · ${totalHechos} hechos · ${totalDecs} decisiones`);
   } catch (err) {
     console.error('handleFileUpload error:', err);
     setState('error', 'Error: ' + err.message.substring(0, 60));
