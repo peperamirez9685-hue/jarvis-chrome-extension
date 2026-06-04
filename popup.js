@@ -119,7 +119,35 @@ async function syncNow() {
     return;
   }
 
-  // ── PASO 1: Extraer conversación con executeScript ───────────────
+  // ── PASO 1: Scroll para cargar todos los mensajes ──────────────
+  setState('busy', '📜 Cargando conversación completa...');
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: async () => {
+        const container = document.querySelector('[class*="overflow-y-auto"]')
+          || document.querySelector('main')
+          || document.documentElement;
+        let lastCount = 0;
+        for (let i = 0; i < 20; i++) {
+          container.scrollTop = 0;
+          window.scrollTo(0, 0);
+          await new Promise(r => setTimeout(r, 500));
+          const count = document.querySelectorAll('[data-testid="user-message"]').length;
+          if (count === lastCount && i > 3) break;
+          lastCount = count;
+        }
+        return lastCount;
+      }
+    });
+  } catch (err) {
+    console.warn('Scroll no disponible:', err.message);
+  }
+
+  await new Promise(r => setTimeout(r, 3000));
+
+  // ── PASO 2: Extraer conversación con executeScript ───────────────
+  setState('busy', 'Extrayendo conversación...');
   let texto = null;
   try {
     const results = await chrome.scripting.executeScript({
