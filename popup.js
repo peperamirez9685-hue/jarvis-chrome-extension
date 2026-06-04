@@ -280,10 +280,9 @@ async function handleFileUpload(event) {
 
     // Limitar a 80,000 chars y dividir en chunks de 15,000
     const CHUNK_SIZE = 15000;
-    const fullText   = texto.substring(0, 80000);
     const chunks     = [];
-    for (let i = 0; i < fullText.length; i += CHUNK_SIZE) {
-      chunks.push(fullText.substring(i, i + CHUNK_SIZE));
+    for (let i = 0; i < texto.length; i += CHUNK_SIZE) {
+      chunks.push(texto.substring(i, i + CHUNK_SIZE));
     }
 
     const fecha = new Date().toISOString();
